@@ -167,6 +167,40 @@ export const DEFAULT_MOODS: Record<string, MoodDef> = {
     label: "angry", color: "error",
     particles: ["!", "!", "!"],
   },
+  confused: {
+    template: "(°{m}°){sw}",
+    parts: { leftEye: "ロ", rightEye: "ロ", mouth: "∀", sweat: "⁉" },
+    label: "confused", color: "warning",
+  },
+  nervous: {
+    template: "({eL}{m}{eR}){sw}",
+    parts: { leftEye: "◔", rightEye: "◔", mouth: "◡", sweat: "💧" },
+    label: "nervous...", color: "warning",
+    particles: ["·", "·"],
+  },
+  smug: {
+    template: "({eL}{m}{eR})♬♪",
+    parts: { leftEye: "˘", rightEye: "˘", mouth: "ɜ" },
+    label: "smug", color: "accent",
+    particles: ["♪", "·", "♫"],
+  },
+  sleepy: {
+    template: "({eL}{m}{eR}) zzZ",
+    parts: { leftEye: "－", rightEye: "－", mouth: "_" },
+    label: "sleepy...", color: "textMuted",
+    particles: ["z", "Z", "z"],
+  },
+  relaxed: {
+    template: "({eL}{m}{eR})",
+    parts: { leftEye: "◔", rightEye: "◔", mouth: "◡" },
+    label: "relaxed", color: "success",
+  },
+  waiting: {
+    template: "({eL}{m}{eR})...",
+    parts: { leftEye: "・", rightEye: "・", mouth: "ω" },
+    label: "waiting...", color: "textMuted",
+    particles: ["·"],
+  },
 }
 
 export const STATUS_MOOD_MAP: Record<string, string> = {
@@ -175,9 +209,16 @@ export const STATUS_MOOD_MAP: Record<string, string> = {
   thinking: "focused",
   "tool-running": "focused",
   "tool-error": "angry",
-  "permission-wait": "sad",
+  "permission-wait": "nervous",
   busy: "focused",
   retry: "angry",
+}
+
+export function resolveIdleMood(idleMs: number, settings: ThemeSettings): string {
+  if (idleMs >= (settings.idle_sleepy_ms ?? 300_000)) return "sleepy"
+  if (idleMs >= (settings.idle_waiting_ms ?? 180_000)) return "waiting"
+  if (idleMs >= (settings.idle_relaxed_ms ?? 60_000)) return "relaxed"
+  return "idle"
 }
 
 export const EYE_SMALL: Record<string, string> = {
