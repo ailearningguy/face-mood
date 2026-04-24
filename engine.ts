@@ -62,6 +62,7 @@ export type ThemeSettings = {
   idle_relaxed_ms?: number
   idle_waiting_ms?: number
   idle_sleepy_ms?: number
+  debounce_ms?: number
 }
 
 export type StatusDef = { icon: string; text: string; color: string }
@@ -108,6 +109,7 @@ export const DEFAULT_SETTINGS: ThemeSettings = {
   idle_relaxed_ms: 60_000,
   idle_waiting_ms: 180_000,
   idle_sleepy_ms: 300_000,
+  debounce_ms: 1_500,
 }
 
 export const DEFAULT_STATUS: Record<string, StatusDef> = {

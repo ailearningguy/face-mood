@@ -8,7 +8,8 @@
     "transition_ms": 400,
     "idle_relaxed_ms": 60000,
     "idle_waiting_ms": 180000,
-    "idle_sleepy_ms": 300000
+    "idle_sleepy_ms": 300000,
+    "debounce_ms": 1500
   },
   "status": {
     "streaming": { "icon": "✏", "text": "responding...", "color": "accent" },

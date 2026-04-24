@@ -137,13 +137,37 @@ const plugin: TuiPluginModule = {
             return statusToMood(info.status, info.toolName)
           })
 
+          const [debouncedMood, setDebouncedMood] = createSignal(effectiveMood())
+          let pendingMood = effectiveMood()
+          let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+          const debounced = createMemo((): string => {
+            const raw = effectiveMood()
+            const isCustom = mood()?.mood != null && MOOD_SET.has(mood()!.mood as any)
+            if (isCustom) {
+              clearTimeout(debounceTimer)
+              pendingMood = raw
+              if (raw !== debouncedMood()) setDebouncedMood(raw)
+              return raw
+            }
+            if (raw === debouncedMood()) return debouncedMood()
+            if (raw === pendingMood) return debouncedMood()
+            pendingMood = raw
+            clearTimeout(debounceTimer)
+            debounceTimer = setTimeout(() => {
+              setDebouncedMood(pendingMood)
+            }, settings.debounce_ms ?? 1_500)
+            return debouncedMood()
+          })
+          onCleanup(() => clearTimeout(debounceTimer))
+
           const currentMoodDef = createMemo((): MoodDef => {
-            const name = effectiveMood()
+            const name = debounced()
             return resolveMoodDef(name, moodDefs)
           })
 
           const currentTransition = createMemo((): TransitionState | undefined => {
-            const name = effectiveMood()
+            const name = debounced()
             if (name !== prevMoodName.current) {
               const prev = resolveMoodDef(prevMoodName.current, moodDefs)
               const next = resolveMoodDef(name, moodDefs)
