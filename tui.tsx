@@ -5,16 +5,21 @@ import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { tmpdir } from "os"
 import {
-  createAnimState, animTick, render, generateParticles,
+  createAnimState, animTick, render, generateParticles, generateRainParticles,
   mergeMoods, mergeStatus,
-  DEFAULT_SETTINGS, DEFAULT_STATUS, DEFAULT_MOODS, STATUS_MOOD_MAP,
-  type AnimState, type MoodDef, type ThemeFile, type ThemeSettings, type StatusDef
+  statusToMood, resolveMoodDef, resolveIdleMood,
+  createTransitionState, updateTransition, triggerShake,
+  DEFAULT_SETTINGS, DEFAULT_STATUS, DEFAULT_MOODS,
+  type AnimState, type MoodDef, type ThemeFile, type ThemeSettings, type StatusDef, type TransitionState
 } from "./engine"
 
 type SystemStatus = "idle" | "streaming" | "thinking" | "tool-running" | "tool-error" | "permission-wait" | "busy" | "retry"
 
 const MOOD_DIR = join(tmpdir(), "opencode-mood")
-const MOOD_SET = new Set(["happy", "sad", "excited", "focused", "celebrating", "done", "angry"])
+const MOOD_SET = new Set([
+  "happy", "sad", "excited", "focused", "celebrating", "done", "angry",
+  "confused", "nervous", "smug", "sleepy",
+])
 
 const MODEL_MAP: Record<string, string> = {
   claude: "Claude ᵔᴥᵔ", gpt: "GPT •̀ᴗ•́", gemini: "Gemini ✧(≖◡≖)",
@@ -82,6 +87,9 @@ const plugin: TuiPluginModule = {
     const pulseTimer = setInterval(() => setPulse(p => !p), 1500)
     onCleanup(() => clearInterval(pulseTimer))
 
+    const [transition, setTransition] = createSignal<TransitionState | undefined>()
+    const prevMoodName = { current: "idle" }
+
     const th = () => api.theme.current
 
     api.slots.register({
@@ -93,13 +101,15 @@ const plugin: TuiPluginModule = {
           const pollTimer = setInterval(() => setPoll(t => t + 1), settings.poll_ms ?? 500)
           onCleanup(() => clearInterval(pollTimer))
 
-          const mood = createMemo((): { mood: string; message?: string; time: number } | undefined => {
+          const [lastActivity, setLastActivity] = createSignal(Date.now())
+
+          const mood = createMemo((): { mood: string; message?: string; intensity?: number; time: number } | undefined => {
             poll()
             try {
               const file = join(MOOD_DIR, `${sessionID}.json`)
               if (!existsSync(file)) return
               const data = JSON.parse(readFileSync(file, "utf-8"))
-              const ttl = settings.mood_ttl_ms ?? 120_000
+              const ttl = settings.mood_ttl_ms ?? 20_000
               if (data.time && Date.now() - data.time > ttl) return
               return data
             } catch { return }
@@ -110,19 +120,58 @@ const plugin: TuiPluginModule = {
             return deriveStatus(api, sessionID)
           })
 
+          const idleDurationMs = createMemo((): number => {
+            const info = sysInfo()
+            if (info.status !== "idle") {
+              setLastActivity(Date.now())
+              return 0
+            }
+            return Date.now() - lastActivity()
+          })
+
           const effectiveMood = createMemo((): string => {
             const customMood = mood()?.mood
             if (customMood && MOOD_SET.has(customMood as any)) return customMood
-            const statusMood = STATUS_MOOD_MAP[sysInfo().status]
-            return statusMood ?? "idle"
+            const info = sysInfo()
+            if (info.status === "idle") return resolveIdleMood(idleDurationMs(), settings)
+            return statusToMood(info.status, info.toolName)
           })
 
-          const faceOutput = createMemo(() => render(animState(), moodDefs[effectiveMood()] ?? moodDefs.idle))
+          const currentMoodDef = createMemo((): MoodDef => {
+            const name = effectiveMood()
+            return resolveMoodDef(name, moodDefs)
+          })
+
+          const currentTransition = createMemo((): TransitionState | undefined => {
+            const name = effectiveMood()
+            if (name !== prevMoodName.current) {
+              const prev = resolveMoodDef(prevMoodName.current, moodDefs)
+              const next = resolveMoodDef(name, moodDefs)
+              prevMoodName.current = name
+              if (prev.label !== next.label) {
+                setTransition(createTransitionState(prev, next, Date.now()))
+                setAnimState(prev => triggerShake(prev))
+              }
+            }
+            const t = transition()
+            const updated = updateTransition(t, Date.now(), settings.transition_ms ?? 400)
+            if (!updated && t) setTransition(undefined)
+            return updated
+          })
+
+          const faceOutput = createMemo(() => {
+            const moodDef = currentMoodDef()
+            const intensity = mood()?.intensity
+            const def = intensity != null ? { ...moodDef, intensity: Math.min(1, Math.max(0, intensity)) } : moodDef
+            return render(animState(), def, currentTransition())
+          })
 
           const particleLines = createMemo(() => {
             const p = faceOutput().particles
             if (!p.length) return [] as string[]
             const tick = Math.floor(animState().time / 250)
+            const mode = currentMoodDef().particleMode
+            if (mode === "rain") return generateRainParticles(p, settings.box_width ?? 22, tick)
             return generateParticles(p, settings.box_width ?? 22, tick)
           })
 
