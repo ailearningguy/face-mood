@@ -3,6 +3,7 @@ import { For, Show, createMemo, createSignal, onCleanup } from "solid-js"
 import { readFileSync, existsSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
+import { tmpdir } from "os"
 import {
   createAnimState, animTick, render, generateParticles,
   mergeMoods, mergeStatus,
@@ -12,7 +13,7 @@ import {
 
 type SystemStatus = "idle" | "streaming" | "thinking" | "tool-running" | "tool-error" | "permission-wait" | "busy" | "retry"
 
-const MOOD_DIR = join("/tmp", "opencode-mood")
+const MOOD_DIR = join(tmpdir(), "opencode-mood")
 const MOOD_SET = new Set(["happy", "sad", "excited", "focused", "celebrating", "done", "angry"])
 
 const MODEL_MAP: Record<string, string> = {
