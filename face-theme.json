@@ -4,7 +4,11 @@
     "poll_ms": 500,
     "mood_ttl_ms": 20000,
     "engine_hz": 20,
-    "box_width": 18
+    "box_width": 18,
+    "transition_ms": 400,
+    "idle_relaxed_ms": 60000,
+    "idle_waiting_ms": 180000,
+    "idle_sleepy_ms": 300000
   },
   "status": {
     "streaming": { "icon": "✏", "text": "responding...", "color": "accent" },
