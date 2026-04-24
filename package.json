@@ -1,0 +1,12 @@
+{
+  "name": "face-mood",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./tui": "./tui.tsx",
+    "./server": "./server.ts"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "workspace:*"
+  }
+}
