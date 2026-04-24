@@ -7,6 +7,6 @@
     "./server": "./server.ts"
   },
   "peerDependencies": {
-    "@opencode-ai/plugin": "^1.14.22"
+    "@opencode-ai/plugin": ">=1.14.18"
   }
 }
