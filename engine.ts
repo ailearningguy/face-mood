@@ -74,7 +74,7 @@ function glitchChar(seed: number): string {
 
 export const DEFAULT_SETTINGS: ThemeSettings = {
   poll_ms: 500,
-  mood_ttl_ms: 120_000,
+  mood_ttl_ms: 20_000,
   engine_hz: 20,
   box_width: 18,
 }

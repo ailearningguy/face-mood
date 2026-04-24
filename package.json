@@ -6,7 +6,7 @@
     "./tui": "./tui.tsx",
     "./server": "./server.ts"
   },
-  "dependencies": {
-    "@opencode-ai/plugin": "workspace:*"
+  "peerDependencies": {
+    "@opencode-ai/plugin": "^1.14.22"
   }
 }

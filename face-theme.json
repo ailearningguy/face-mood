@@ -2,7 +2,7 @@
   "_doc": "Theme configuration for face-mood plugin. Edit and restart opencode to apply.",
   "settings": {
     "poll_ms": 500,
-    "mood_ttl_ms": 120000,
+    "mood_ttl_ms": 20000,
     "engine_hz": 20,
     "box_width": 18
   },
