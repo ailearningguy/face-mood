@@ -214,6 +214,46 @@ export const STATUS_MOOD_MAP: Record<string, string> = {
   retry: "angry",
 }
 
+const TOOL_MOOD_MAP: Record<string, string> = {
+  bash: "focused",
+  edit: "focused",
+  write: "focused",
+  glob: "scanning",
+  grep: "scanning",
+  read: "scanning",
+  webfetch: "loading",
+}
+
+const TOOL_MOOD_FACES: Record<string, MoodDef> = {
+  scanning: {
+    template: "({eL}{m}{eR})",
+    parts: { leftEye: "◉", rightEye: "◉", mouth: "・" },
+    label: "scanning", color: "accent",
+    particles: ["·", "·"],
+  },
+  loading: {
+    template: "({eL}{m}{eR})",
+    parts: { leftEye: "◎", rightEye: "◎", mouth: "ω" },
+    label: "loading", color: "warning",
+    particles: ["∘", "·", "∘"],
+  },
+}
+
+export function statusToMood(status: string, toolName?: string): string {
+  const baseMood = STATUS_MOOD_MAP[status] ?? "idle"
+  if (status !== "tool-running" && status !== "tool-error") return baseMood
+  if (!toolName) return baseMood
+  const lower = toolName.toLowerCase()
+  for (const [tool, mood] of Object.entries(TOOL_MOOD_MAP)) {
+    if (lower.includes(tool)) return mood
+  }
+  return baseMood
+}
+
+export function resolveMoodDef(moodName: string, moodDefs: Record<string, MoodDef>): MoodDef {
+  return moodDefs[moodName] ?? TOOL_MOOD_FACES[moodName] ?? moodDefs.idle
+}
+
 export function resolveIdleMood(idleMs: number, settings: ThemeSettings): string {
   if (idleMs >= (settings.idle_sleepy_ms ?? 300_000)) return "sleepy"
   if (idleMs >= (settings.idle_waiting_ms ?? 180_000)) return "waiting"
