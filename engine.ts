@@ -6,6 +6,8 @@ export type MoodDef = {
   label: string
   color: string
   particles?: string[]
+  intensity?: number
+  particleMode?: "scatter" | "rain"
 }
 
 export type AnimState = {
@@ -21,6 +23,17 @@ export type AnimState = {
   glitchSeed: number
   shiftTimer: number
   shiftOffset: number
+  bouncePhase: number
+  shakePhase: number
+  shakeIntensity: number
+  wavePhase: number
+}
+
+export type TransitionState = {
+  from: MoodDef
+  to: MoodDef
+  progress: number
+  startTime: number
 }
 
 export type RenderOutput = {
@@ -28,6 +41,7 @@ export type RenderOutput = {
   label: string
   color: string
   particles: string[]
+  offsetY: number
 }
 
 export type ThemeSettings = {
@@ -35,6 +49,10 @@ export type ThemeSettings = {
   mood_ttl_ms?: number
   engine_hz?: number
   box_width?: number
+  transition_ms?: number
+  idle_relaxed_ms?: number
+  idle_waiting_ms?: number
+  idle_sleepy_ms?: number
 }
 
 export type StatusDef = { icon: string; text: string; color: string }
@@ -77,6 +95,10 @@ export const DEFAULT_SETTINGS: ThemeSettings = {
   mood_ttl_ms: 20_000,
   engine_hz: 20,
   box_width: 18,
+  transition_ms: 400,
+  idle_relaxed_ms: 60_000,
+  idle_waiting_ms: 180_000,
+  idle_sleepy_ms: 300_000,
 }
 
 export const DEFAULT_STATUS: Record<string, StatusDef> = {
@@ -149,12 +171,57 @@ export const STATUS_MOOD_MAP: Record<string, string> = {
   retry: "angry",
 }
 
+export const EYE_SMALL: Record<string, string> = {
+  "◯": "◕", "◕": "◔", "△": "▷", "▽": "◁", "☆": "★",
+  "˜": "^", "◦": "•", "ಡ": "ಠ",
+}
+
+function eyeForIntensity(eye: string, intensity: number): string {
+  if (intensity >= 0.7) return eye
+  if (intensity < 0.3) return EYE_SMALL[eye] ?? "·"
+  return eye
+}
+
+const MOUTH_INTENSITY: Record<string, string> = {
+  "益": "ω", "◡": "‿", "◜": "◡",
+}
+
+function mouthForIntensity(mouth: string, intensity: number): string {
+  if (intensity >= 0.7) return mouth
+  if (intensity < 0.3) return MOUTH_INTENSITY[mouth] ?? mouth
+  return mouth
+}
+
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+
+export function interpolateParts(from: FaceParts, to: FaceParts, t: number): FaceParts {
+  return {
+    leftEye: t < 0.5 ? from.leftEye : to.leftEye,
+    rightEye: t < 0.5 ? from.rightEye : to.rightEye,
+    mouth: t < 0.5 ? from.mouth : to.mouth,
+  }
+}
+
+export function createTransitionState(from: MoodDef, to: MoodDef, now: number): TransitionState {
+  return { from, to, progress: 0, startTime: now }
+}
+
+export function updateTransition(state: TransitionState | undefined, now: number, duration: number): TransitionState | undefined {
+  if (!state) return undefined
+  const elapsed = now - state.startTime
+  const progress = Math.min(elapsed / duration, 1)
+  return progress >= 1 ? undefined : { ...state, progress: easeInOutCubic(progress) }
+}
+
 export function createAnimState(): AnimState {
   return {
     time: 0, blinkPhase: 0, blinkTimer: rand(3000, 5000),
     breathPhase: 0, jitterTimer: rand(2000, 4000), jitterActive: false,
     glitchTimer: rand(30000, 60000), glitchActive: false, glitchFrames: 0, glitchSeed: 0,
     shiftTimer: rand(8000, 15000), shiftOffset: 0,
+    bouncePhase: 0, shakePhase: 0, shakeIntensity: 0, wavePhase: 0,
   }
 }
 
@@ -205,8 +272,18 @@ function blinkEye(eye: string, phase: number): string {
   return eye
 }
 
-export function render(anim: AnimState, mood: MoodDef): RenderOutput {
-  const p = { ...mood.parts }
+export function render(anim: AnimState, mood: MoodDef, transition?: TransitionState): RenderOutput {
+  const t = transition?.progress ?? 1
+  const baseParts = transition
+    ? interpolateParts(transition.from.parts, transition.to.parts, t)
+    : { ...mood.parts }
+
+  const intensity = mood.intensity ?? 1
+  const p: FaceParts = {
+    leftEye: eyeForIntensity(baseParts.leftEye, intensity),
+    rightEye: eyeForIntensity(baseParts.rightEye, intensity),
+    mouth: mouthForIntensity(baseParts.mouth, intensity),
+  }
 
   const breathVal = Math.sin(anim.breathPhase)
   if (breathVal > 0.8) {
@@ -236,7 +313,21 @@ export function render(anim: AnimState, mood: MoodDef): RenderOutput {
   if (anim.shiftOffset > 0) face = " " + face
   if (anim.shiftOffset < 0 && face.length > 1) face = face.slice(1)
 
-  return { lines: [face], label: mood.label, color: mood.color, particles: mood.particles ?? [] }
+  const shakeX = anim.shakeIntensity > 0 ? (Math.sin(anim.shakePhase * 30) > 0 ? " " : "") : ""
+  const shakeTrim = anim.shakeIntensity > 0 && Math.sin(anim.shakePhase * 30) < 0 ? 1 : 0
+  face = shakeX + face
+  if (shakeTrim && face.length > 2) face = face.slice(1)
+
+  const label = transition && t < 0.5 ? transition.from.label : mood.label
+  const color = transition && t < 0.5 ? transition.from.color : mood.color
+  const particles = mood.particles ?? []
+
+  let offsetY = 0
+  if (mood.particleMode === "rain") offsetY = 0
+  const bounceAmt = Math.abs(Math.sin(anim.bouncePhase)) * 0
+  offsetY += bounceAmt
+
+  return { lines: [face], label, color, particles, offsetY }
 }
 
 export function generateParticles(chars: string[], width: number, tick: number): string[] {
