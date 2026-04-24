@@ -6,10 +6,13 @@ import { join } from "path"
 import { tmpdir } from "os"
 
 const MOOD_DIR = join(tmpdir(), "opencode-mood")
-const MOODS = ["happy", "sad", "excited", "focused", "celebrating", "done", "angry"] as const
+const MOODS = [
+  "happy", "sad", "excited", "focused", "celebrating", "done", "angry",
+  "confused", "nervous", "smug", "sleepy",
+] as const
 type Mood = (typeof MOODS)[number]
 
-function writeMood(sessionID: string, data: { mood: Mood; message?: string; time: number }) {
+function writeMood(sessionID: string, data: { mood: Mood; message?: string; intensity?: number; time: number }) {
   mkdirSync(MOOD_DIR, { recursive: true })
   writeFileSync(join(MOOD_DIR, `${sessionID}.json`), JSON.stringify(data))
 }
@@ -17,12 +20,19 @@ function writeMood(sessionID: string, data: { mood: Mood; message?: string; time
 const setMoodTool = tool({
   description: "Express your current emotion before responding. Call this to set the face in the TUI.",
   args: {
-    mood: tool.schema.enum(MOODS).describe("Your emotion: happy, sad, excited, focused, celebrating, done, angry"),
+    mood: tool.schema.enum(MOODS).describe("Your emotion: happy, sad, excited, focused, celebrating, done, angry, confused, nervous, smug, sleepy"),
     message: tool.schema.string().optional().describe("Short message displayed under the face (max 30 chars)"),
+    intensity: tool.schema.number().min(0).max(1).optional().describe("Intensity 0-1 (default 1). Lower = smaller eyes, subtler expression"),
   },
   async execute(args, context) {
-    writeMood(context.sessionID, { mood: args.mood as Mood, message: args.message?.slice(0, 30), time: Date.now() })
-    return `Mood set to ${args.mood}`
+    const intensity = args.intensity != null ? Math.min(1, Math.max(0, args.intensity)) : 1
+    writeMood(context.sessionID, {
+      mood: args.mood as Mood,
+      message: args.message?.slice(0, 30),
+      intensity,
+      time: Date.now(),
+    })
+    return `Mood set to ${args.mood} (intensity: ${intensity})`
   },
 })
 
@@ -41,7 +51,7 @@ export default {
     return {
       tool: {
         set_mood: setMoodTool,
-        clear_mood: clearMoodTool,
+        clear_mood: clearMood,
       },
     }
   },
