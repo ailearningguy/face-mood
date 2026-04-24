@@ -1,4 +1,13 @@
-export type FaceParts = { leftEye: string; rightEye: string; mouth: string }
+export type FaceParts = {
+  leftEye: string
+  rightEye: string
+  mouth: string
+  browL?: string
+  browR?: string
+  blush?: string
+  sweat?: string
+  accessory?: string
+}
 
 export type MoodDef = {
   template: string
@@ -201,6 +210,11 @@ export function interpolateParts(from: FaceParts, to: FaceParts, t: number): Fac
     leftEye: t < 0.5 ? from.leftEye : to.leftEye,
     rightEye: t < 0.5 ? from.rightEye : to.rightEye,
     mouth: t < 0.5 ? from.mouth : to.mouth,
+    browL: t < 0.5 ? from.browL : to.browL,
+    browR: t < 0.5 ? from.browR : to.browR,
+    blush: t < 0.5 ? from.blush : to.blush,
+    sweat: t < 0.5 ? from.sweat : to.sweat,
+    accessory: t < 0.5 ? from.accessory : to.accessory,
   }
 }
 
@@ -308,15 +322,26 @@ export function render(anim: AnimState, mood: MoodDef, transition?: TransitionSt
     p[keys[idx]] = glitchChar(anim.glitchSeed + idx * 7)
   }
 
-  let face = mood.template.replace("{eL}", p.leftEye).replace("{eR}", p.rightEye).replace("{m}", p.mouth)
+  let face = mood.template
+    .replace("{eL}", p.leftEye)
+    .replace("{eR}", p.rightEye)
+    .replace("{m}", p.mouth)
+    .replace("{bL}", mood.parts.browL ?? "")
+    .replace("{bR}", mood.parts.browR ?? "")
+    .replace("{bl}", mood.parts.blush ?? "")
+    .replace("{sw}", mood.parts.sweat ?? "")
+    .replace("{ac}", mood.parts.accessory ?? "")
 
-  if (anim.shiftOffset > 0) face = " " + face
-  if (anim.shiftOffset < 0 && face.length > 1) face = face.slice(1)
-
-  const shakeX = anim.shakeIntensity > 0 ? (Math.sin(anim.shakePhase * 30) > 0 ? " " : "") : ""
-  const shakeTrim = anim.shakeIntensity > 0 && Math.sin(anim.shakePhase * 30) < 0 ? 1 : 0
-  face = shakeX + face
-  if (shakeTrim && face.length > 2) face = face.slice(1)
+  const lines = face.split("\n").map(line => {
+    let l = line
+    if (anim.shiftOffset > 0) l = " " + l
+    if (anim.shiftOffset < 0 && l.length > 1) l = l.slice(1)
+    const shakeX = anim.shakeIntensity > 0 ? (Math.sin(anim.shakePhase * 30) > 0 ? " " : "") : ""
+    const shakeTrim = anim.shakeIntensity > 0 && Math.sin(anim.shakePhase * 30) < 0 ? 1 : 0
+    l = shakeX + l
+    if (shakeTrim && l.length > 2) l = l.slice(1)
+    return l
+  })
 
   const label = transition && t < 0.5 ? transition.from.label : mood.label
   const color = transition && t < 0.5 ? transition.from.color : mood.color
@@ -327,7 +352,7 @@ export function render(anim: AnimState, mood: MoodDef, transition?: TransitionSt
   const bounceAmt = Math.abs(Math.sin(anim.bouncePhase)) * 0
   offsetY += bounceAmt
 
-  return { lines: [face], label, color, particles, offsetY }
+  return { lines, label, color, particles, offsetY }
 }
 
 export function generateParticles(chars: string[], width: number, tick: number): string[] {
