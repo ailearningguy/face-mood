@@ -1,0 +1,18 @@
+{
+  "_doc": "Theme configuration for face-mood plugin. Edit and restart opencode to apply.",
+  "settings": {
+    "poll_ms": 500,
+    "mood_ttl_ms": 120000,
+    "engine_hz": 20,
+    "box_width": 18
+  },
+  "status": {
+    "streaming": { "icon": "✏", "text": "responding...", "color": "accent" },
+    "thinking": { "icon": "💭", "text": "thinking...", "color": "textMuted" },
+    "tool-running": { "icon": "⚙", "text": "", "color": "warning" },
+    "tool-error": { "icon": "⚠", "text": "failed", "color": "error" },
+    "permission-wait": { "icon": "🔒", "text": "needs approval", "color": "warning" },
+    "retry": { "icon": "↻", "text": "retrying ({n})", "color": "error" },
+    "busy": { "icon": "⏳", "text": "working...", "color": "warning" }
+  }
+}
