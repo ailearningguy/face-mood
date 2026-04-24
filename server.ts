@@ -51,7 +51,7 @@ export default {
     return {
       tool: {
         set_mood: setMoodTool,
-        clear_mood: clearMood,
+        clear_mood: clearMoodTool,
       },
     }
   },
