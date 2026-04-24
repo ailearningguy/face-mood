@@ -274,6 +274,11 @@ export function animTick(state: AnimState, dt: number): AnimState {
   s.shiftTimer -= dt
   if (s.shiftTimer <= 0) { s.shiftOffset = Math.floor(Math.random() * 3) - 1; s.shiftTimer = rand(8000, 15000) }
 
+  s.bouncePhase += dt / 300 * Math.PI * 2
+  s.shakePhase += dt / 1000 * Math.PI * 2
+  if (s.shakeIntensity > 0) s.shakeIntensity = Math.max(0, s.shakeIntensity - dt / 500)
+  s.wavePhase += dt / 2000 * Math.PI * 2
+
   return s
 }
 
@@ -372,6 +377,28 @@ export function generateParticles(chars: string[], width: number, tick: number):
     lines.push(arr.join(""))
   }
   return lines
+}
+
+export function generateRainParticles(chars: string[], width: number, tick: number): string[] {
+  if (!chars.length) return []
+  const lines: string[] = []
+  const lineCount = 2
+  for (let i = 0; i < lineCount; i++) {
+    const arr: string[] = Array(width).fill(" ")
+    const dropCount = 1 + (tick + i) % 2
+    for (let j = 0; j < dropCount; j++) {
+      const seed = tick * 3 + i * 17 + j * 11
+      const pos = Math.abs(((Math.sin(seed * 4.3) * 10000) % 1) * (width - 2) | 0)
+      const char = chars[Math.abs(seed) % chars.length]
+      arr[Math.min(pos + 1, width - 2)] = char
+    }
+    lines.push(arr.join(""))
+  }
+  return lines
+}
+
+export function triggerShake(state: AnimState): AnimState {
+  return { ...state, shakeIntensity: 1, shakePhase: 0 }
 }
 
 export function mergeMoods(base: Record<string, MoodDef>, overrides?: Partial<Record<string, Partial<MoodDef>>>): Record<string, MoodDef> {
